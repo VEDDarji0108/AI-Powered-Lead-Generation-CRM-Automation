@@ -36,19 +36,6 @@ This workflow turns a **3-hour manual process into a 2-minute automation**.
 
 ---
 
-## 🔄 Workflow Diagram
-```mermaid
-graph TD
-  A[User Input: Telegram Text/Voice] --> B[Voice-to-Text (OpenAI Whisper)]
-  B --> C[Lead Scraping (Google/LinkedIn/Apify)]
-  C --> D[Lead Research (Trustpilot, LinkedIn posts, Education)]
-  D --> E[AI Enrichment (Summaries, Insights, RelevanceAI)]
-  E --> F[Save to Google Sheets / CRM]
-  F --> G[Slack/Telegram Notifications (New Lead Added)]
-```
-
----
-
 ## 📊 Results (Demo Metrics)
 - **80% time saved** on manual lead collection
 - **100% structured data** stored in Sheets/CRM (no missing fields)
