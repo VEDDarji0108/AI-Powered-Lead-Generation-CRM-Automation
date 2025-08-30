@@ -1,0 +1,941 @@
+{
+  "name": "Lead Research Flow - Pulkit 20 May",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api-d7b62b.stack.tryrelevance.com/latest/studios/3413b905-aa24-424f-857f-5340204573aa/trigger_webhook?project=fe1de458fcdf-41ae-a1dd-2a5ee18ccaeb",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "fe1de458fcdf-41ae-a1dd-2a5ee18ccaeb:sk-ODRhZWFhZDQtOTAwMi00YThiLWFkNWQtZDI0NTg0OWIxNjI0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n\"linkedin_url\":\"{{ $json.query }}\",\n\"last_x_days\":30\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        540,
+        -40
+      ],
+      "id": "60572d8f-9754-4f76-8419-9d1ef28886a7",
+      "name": "Scrape Profiles + Posts - Relevance AI",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.perplexity.ai/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"model\": \"sonar-pro\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a researcher in a business development team. Your job is to find as much research as you can about the prospect company. You must ensure your research is for the correct company and is highly accurate. Your research must always include what the prospect company does.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Find as much info as you can about  }} This is their website URL: \"\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        -260
+      ],
+      "id": "464acb26-228e-41a2-b17b-48799b1df5a5",
+      "name": "Research Company - Perplexity",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "I8vElWN8VSe2XedT",
+          "name": "Unnamed credential"
+        }
+      },
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "content": "# Research Prospect\n- LinkedIn \n- Online \n- TrustPilot Reviews\n",
+        "height": 360,
+        "width": 2020
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        220,
+        -180
+      ],
+      "typeVersion": 1,
+      "id": "aa8e8b61-f557-4c1a-bfcd-bda9fd040265",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "url": "https://api.apify.com/v2/acts/nikita-sviridenko~trustpilot-reviews-scraper/run-sync-get-dataset-items?token=apify_api_huwOzIl18VUHIvPLtqR8N4EWZHpbKI0ngpO3",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"companyDomain\": \"{{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data }}\",\n    \"count\": 5,\n    \"replies\": false,\n    \"sort\": \"recency\",\n    \"stars\": [\n        \"1\",\n        \"2\",\n        \"3\"\n    ],\n    \"startPage\": 1,\n    \"verified\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1880,
+        -40
+      ],
+      "id": "49048c27-0e12-41e9-9793-a229de6f4b2f",
+      "name": "TrustPilot Reviews (1-3 Stars)",
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "I8vElWN8VSe2XedT",
+          "name": "Unnamed credential"
+        },
+        "httpHeaderAuth": {
+          "id": "XDN37qnYVqmoMnHg",
+          "name": "nikita- apify myautomation"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $node[\"Scrape Profiles + Posts - Relevance AI\"].json;\n\n// Check if input.linkedin_profile_details_data exists and has experiences\nconst experiences = input?.linkedin_profile_details_data?.experiences;\n\nlet htmlRows = '';\n\n// If experiences is an array, loop through and build the HTML\nif (Array.isArray(experiences)) {\n  experiences.forEach(exp => {\n    htmlRows += `<tr>\n        <td>${exp.company || ''}</td>\n        <td>${exp.title || ''}</td>\n        <td>${exp.date_range || ''}</td>\n        <td>${exp.location || ''}</td>\n      </tr>`;\n  });\n} else {\n  htmlRows = `<tr><td colspan=\"4\">No experience data found</td></tr>`;\n}\n\n// Return as expected\nreturn [{ json: { experiencesTable: htmlRows } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1020,
+        -40
+      ],
+      "id": "2f0bd250-920e-422c-86c8-6c7fc15f9250",
+      "name": "Experiences"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $node[\"Scrape Profiles + Posts - Relevance AI\"].json;\n\n// Safely access the educations array\nconst educations = input?.linkedin_profile_details_data?.educations || [];\n\n// Build the HTML table rows for education\nlet educationRows = '';\nif (Array.isArray(educations) && educations.length > 0) {\n  educations.forEach(edu => {\n    educationRows += `<tr>\n        <td>${edu.school || ''}</td>\n        <td>${edu.degree || ''}</td>\n        <td>${edu.field_of_study || ''}</td>\n      </tr>`;\n  });\n} else {\n  educationRows = `<tr><td colspan=\"3\">No education data found</td></tr>`;\n}\n\n// Return a new object that only contains the educationTable key\nreturn [{ json: { educationTable: educationRows } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        -40
+      ],
+      "id": "ff7c7892-7574-4c7a-906d-783ac8a95db5",
+      "name": "Education"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Initialize an empty string for reviews HTML\nlet reviewsHTML = '';\n\n// Loop over each item (each review)\nitems.forEach(item => {\n  const review = item.json; // each item is a review object\n  reviewsHTML += `<div class=\"review-card\" style=\"border:1px solid #ddd; padding:10px; margin-bottom:10px;\">`;\n  reviewsHTML += `<h3>${review.reviewHeadline}</h3>`;\n  reviewsHTML += `<p><strong>Rating:</strong> ${review.ratingValue}</p>`;\n  // Format the date nicely; adjust locale as needed\n  const date = new Date(review.datePublished);\n  reviewsHTML += `<p><strong>Date:</strong> ${date.toLocaleDateString()}</p>`;\n  reviewsHTML += `<p>${review.reviewBody}</p>`;\n  if (review.replyMessage) {\n    reviewsHTML += `<p><strong>Reply:</strong> ${review.replyMessage}</p>`;\n  }\n  reviewsHTML += `</div>`;\n});\n\n// Return a new JSON object with the combined reviews HTML\nreturn [{ json: { reviewsHTML } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2080,
+        -40
+      ],
+      "id": "03fafbf9-dc47-423a-a1ad-ff0d5548df6f",
+      "name": "Reviews"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get data from previous node\nconst input = $node[\"Scrape Profiles + Posts - Relevance AI\"].json;\n\n// Attempt to retrieve posts from nested or top-level paths\nconst posts = (\n  input.output?.last_30_days_posts_transformed || \n  input.last_30_days_posts_transformed || \n  []\n);\n\n// Generate HTML\nlet postsHTML = '';\n\nif (Array.isArray(posts) && posts.length > 0) {\n  posts.forEach(post => {\n    const userPost = post.user_post?.trim() || '(No content)';\n    const postedDate = post.posted || 'Unknown date';\n\n    postsHTML += `\n      <div class=\"linkedin-post\" style=\"border:1px solid #ddd; padding:10px; margin-bottom:10px;\">\n        <p>${userPost}</p>\n        <p><em>Posted on: ${postedDate}</em></p>\n      </div>`;\n  });\n} else {\n  postsHTML = `\n    <div class=\"no-posts\" style=\"color:#888; font-style:italic;\">\n      No recent LinkedIn posts available.\n    </div>`;\n}\n\n// Return HTML\nreturn [{ json: { postsHTML } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        -40
+      ],
+      "id": "9493d7b3-4afb-4a27-bfc8-4439d1732366",
+      "name": "Posts"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the content from the DeepSeek response\nconst input = items[0].json;\nconst content = input.choices?.[0]?.message?.content || \"\";\n\n// Use regex to extract all URLs from the content\nconst urlRegex = /(https?:\\/\\/[^\\s)\\]]+)/g;\nconst matches = content.match(urlRegex) || [];\n\n// Build HTML list\nlet citationsHTML = '<ul>';\nmatches.forEach(url => {\n  citationsHTML += `<li><a href=\"${url}\" target=\"_blank\">${url}</a></li>`;\n});\ncitationsHTML += '</ul>';\n\n// Return output\nreturn [{ json: { citationsHTML } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1640,
+        -40
+      ],
+      "id": "8f92dd3e-a18b-4d3f-b5fc-283e83875b87",
+      "name": "Citations"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "o1-mini",
+          "mode": "list",
+          "cachedResultName": "O1-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are part of the business development team at Krivy, an AI automation agency. Your task is to analyze both the **prospect’s personal profile** and their **company profile** before a consultation call.\n\nYou will receive:\n- The person’s structured LinkedIn profile data.\n- The company’s details (from Clearbit, Crunchbase, or scraped web content).\n\nYour goal is to provide a **clear, concise overview** of both, including relevant insights for the consultant.\n\n---\n\n### 👤 Person Profile — What to Extract:\n- Full name and current role.\n- Summary of their work history (highlighting senior roles or relevant industries).\n- Areas of expertise (marketing, tech, automation, leadership, etc.).\n- Notable skills, certifications, or achievements.\n- Education background.\n- Professional tone (startup-oriented, corporate, technical, etc.).\n\n---\n\n### 🏢 Company Profile — What to Extract:\n- Company name, location, and website.\n- Industry and product/service offering.\n- Target customers (B2B, B2C, SMBs, Enterprise).\n- Company size and stage (early, scaling, mature).\n- Technology stack used (especially CRM, marketing tools, automation tools).\n- Any known pain points or gaps we can solve (from reviews, tech used, hiring trends, etc.).\n- Recent news, funding, or major initiatives if available.\n\n---\n\n### 🧠 Output Format:\nReturn your insights in HTML format like this:\n\n<h2>Prospect Overview</h2>\n<ul>\n  <li><strong>Name:</strong> John Doe</li>\n  <li><strong>Current Role:</strong> Head of Growth at XYZ Corp</li>\n  <li><strong>Expertise:</strong> Performance Marketing, Funnel Optimization</li>\n  <li><strong>Education:</strong> MBA, Columbia University</li>\n</ul>\n\n<h2>Company Overview</h2>\n<ul>\n  <li><strong>Company:</strong> XYZ Corp</li>\n  <li><strong>Industry:</strong> eCommerce SaaS</li>\n  <li><strong>Product:</strong> AI-powered personalization engine for online stores</li>\n  <li><strong>Target Audience:</strong> DTC eCommerce brands in North America</li>\n  <li><strong>Stack:</strong> Shopify, Klaviyo, Segment, HubSpot</li>\n  <li><strong>Opportunity:</strong> Potential for automation in onboarding and retention journeys</li>\n</ul>\n\nIf any detail is missing from the input, skip that bullet point.\n\n---\n\nLet me know if you want me to wrap this into a **prebuilt n8n Function node** or generate dynamic data insertion for you!"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        2380,
+        -260
+      ],
+      "id": "769662e4-9dc3-439c-9928-7c67a141e842",
+      "name": "Person + Company Profile",
+      "credentials": {
+        "openAiApi": {
+          "id": "00oHXEhh69yWCZ7s",
+          "name": "Open AI - Abhay Sir"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "o1-mini",
+          "mode": "list",
+          "cachedResultName": "O1-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are part of the business development team at Krivy, an AI automation agency. \n\nWhen new leads book a consultation with Krivy, your team researches the leads and provides the research + extracted insights to the consultants so they can review it before the call.\n\nAs an ice breaker for each consult, Abhay, Krivy’s AI consultant, likes to mention a similarity between himself and the lead. This makes the lead feel more at ease, helping the conversation feel like it's between friends rather than strangers.\n\nTo find these similarities, you must compare **Abhay’s LinkedIn profile** to the **lead’s LinkedIn profile**. Look for similarities in:\n\n- Education  \n- Work experience  \n- Locations  \n- Tools, tech stacks, or automation interests  \n- Industries worked in  \n- Certifications  \n- Interests and hobbies  \n\nIf there are no similarities, simply write **\"No Similarities Found\"** in the **details section**.\n\n---\n\nYour output **must be in this HTML format**:\n\n## Similarities  \n<ul>  \n  <li>One similarity here</li>  \n  <li>Another similarity here</li>  \n</ul>\n\n---\n// Safely fetch the lead's LinkedIn data\nconst leadData = $node[\"Scrape Profiles + Posts - Relevance AI\"].last().json.linkedin_profile_details_data;\n\n// Abhay's hardcoded LinkedIn info\nconst abhayProfile = {\n  name: \"Abhay Purohit\",\n  current_position: \"Founder at Krivy, AI & Automation Consultant\",\n  education: [\n    {\n      school: \"Gujarat Technological University\",\n      degree: \"Bachelor of Engineering (BE)\",\n      field_of_study: \"Information Technology\"\n    }\n  ],\n  experience: [\n    {\n      company: \"Krivy Co.\",\n      title: \"Founder & AI Automation Consultant\",\n      location: \"Ahmedabad, Gujarat, India\"\n    },\n    {\n      company: \"Freelance\",\n      title: \"Marketing Consultant\",\n      location: \"Remote\"\n    }\n  ],\n  location: \"Ahmedabad, Gujarat, India\",\n  interests: [\n    \"Automation\",\n    \"AI Agents\",\n    \"eCommerce\",\n    \"Marketing Technology\",\n    \"Workflow Automation\",\n    \"Storytelling\",\n    \"Business Strategy\"\n  ]\n};\n\n// If no lead data found, exit early\nif (!leadData) {\n  return [{\n    json: {\n      similaritiesHtml: `\n        <h2>Similarities</h2>\n        <ul>\n          <li>No Similarities Found</li>\n        </ul>\n      `\n    }\n  }];\n}\n\n// Start comparing\nlet similarities = [];\n\n// Location\nif (leadData.location && leadData.location.includes(abhayProfile.location.split(\",\")[0])) {\n  similarities.push(`Both are located in or near <strong>${abhayProfile.location}</strong>.`);\n}\n\n// Education\nif (Array.isArray(leadData.educations)) {\n  leadData.educations.forEach(edu => {\n    if (edu.school && abhayProfile.education.some(e => edu.school.includes(e.school))) {\n      similarities.push(`Both studied at <strong>${edu.school}</strong>.`);\n    }\n    if (edu.field_of_study && abhayProfile.education.some(e => edu.field_of_study && edu.field_of_study.toLowerCase().includes(e.field_of_study.toLowerCase()))) {\n      similarities.push(`Both have a background in <strong>${edu.field_of_study}</strong>.`);\n    }\n  });\n}\n\n// Work Experience\nif (Array.isArray(leadData.experiences)) {\n  leadData.experiences.forEach(exp => {\n    if (exp.company && abhayProfile.experience.some(e => exp.company.includes(e.company))) {\n      similarities.push(`Both have worked at <strong>${exp.company}</strong>.`);\n    }\n    if (exp.location && exp.location.includes(\"Remote\")) {\n      similarities.push(`Both have worked remotely.`);\n    }\n  });\n}\n\n// Interests\nif (Array.isArray(leadData.interests)) {\n  abhayProfile.interests.forEach(interest => {\n    if (leadData.interests.includes(interest)) {\n      similarities.push(`Both share an interest in <strong>${interest}</strong>.`);\n    }\n  });\n}\n\n// Final Output\nconst htmlList = similarities.length > 0\n  ? `<h2>Similarities</h2>\\n<ul>\\n${similarities.map(sim => `<li>${sim}</li>`).join('\\n')}\\n</ul>`\n  : `<h2>Similarities</h2>\\n<ul>\\n<li>No Similarities Found</li>\\n</ul>`;\n\nreturn [{\n  json: {\n    similaritiesHtml: htmlList\n  }\n}];\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        2720,
+        -260
+      ],
+      "id": "6bc1a653-9f5d-45f8-af3b-33360dce1ed6",
+      "name": "Similarities",
+      "credentials": {
+        "openAiApi": {
+          "id": "00oHXEhh69yWCZ7s",
+          "name": "Open AI - Abhay Sir"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "o1-mini",
+          "mode": "list",
+          "cachedResultName": "O1-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are part of the business development team at Kamexa. Kamexa is an AI Automation agency that provides the following services: \n\n- AI Consulting: Kamexa provides consultations to businesses looking to implement AI. \n- Process Automation: Kamexa automates processes that are repetitive, time consuming, high volume or error prone. These repetitive proccesses are automated with traditional rule based automations. \n- AI SaaS Development: For businesses that can automate their entire service, Kamexa creates a SaaS platform so that they can provide their services over the cloud in a one to many fashion. \n- AI Agent Development: Kamexa develops custom AI agents that can handle less repetitive tasks autonomously. Considering the current capabilities of AI agents, the tasks that they can complete have to be simple in scope. \n\nKamexa's AI consultants are the first point of contact for a new lead. So when a new lead is interested in AI Automation solutions, they book a free call with Kamexa's AI consultants. The consultants are then responsible for exploring the highest ROI opportunities for automation.\n\nOnce a call is booked, your team does in depth research on the lead so that the consultants can read through it in preparation for the consultation. \n\nAs part of the business development team you are provided with the following research: \n\n- LinkedIn Profile: This is the result of scraping the leads LinkedIn profile. This will give you the leads bio, experiences, education and company description.\n- LinkedIn Posts: This gives you the leads LinkedIn posts over the past 30 days. \n- Company Google Search: This gives you the research found from searching the leads company on Google and their website. \n- Reviews: This gives you the most recent bad reviews the leads company received on TrustPilot. \n\nYour job is to analyse the research and extract following information: \n\n- Pain Points: By looking through the companies negative reviews and also considering their line of business and the leads position in the company, you must identify the biggest pain points the leads company could be facing. \n- Solutions to Pain Points: In this section you must come up with solutions Kamexa can offer to solve each of the pain points completely. \n- Highest ROI Automation Opportunities: Considering the info you have about the lead and his company, you must come up with the 5 highest ROI automation opportunities that Kamexa can offer them. These automations have to be realisitic, yet extremely high ROI. Sort them in order of best opportunity at the top of the list.  \n\nThe insights you extract must be in HTML format as they will be going in the middle of a HTML document. \n\nPlease use the following output format: \n\nOpportunities (Heading 1)\n\nPain Points and Solutions: (Heading 2)\n[Table with 3 columns: \n1. Pain Point: Explains the pain point theyre facing. \n2. Evidence: Explains why we think this is the case. \n3. Solution: Explains the solution to the pain point by Kamexa.\nEach row is a new pain point.]\n\nAutomation Opportunities: (Heading 2)\n[5 Highest ROI automation opportunities for the leads company sorted with the best solution at the top. This must be in dotpoint format:\n- Opportunity#1 Name: Details\n- Opportunity#2 Name: Details\n...\n\n- Don't wrap the output in ```html``` since the output will go into the middle of another HTML document.\n\nSomeone just booked a call. Here's the research your team found. Create the output as per the above requirements: \n\n\nLinkedIn Profile Scraped Summary in HTML format: \n{{ $('Person + Company Profile').last().json.message.content }}\n\nWeb Research Results for Leads Company: \n{{ $('Research Company - Perplexity').last().json.choices[0].message.content }} \n\nRecent Bad Reviews on TrustPilot for Leads Company in HTML format: \n{{ $('Reviews').last().json.reviewsHTML }}\n(if there is no reviews then just create the pain points by considering the leads company and job title)\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        3040,
+        -260
+      ],
+      "id": "9e81b812-a4d5-4327-8140-815bef731f36",
+      "name": "Pain Points + Solutions",
+      "credentials": {
+        "openAiApi": {
+          "id": "00oHXEhh69yWCZ7s",
+          "name": "Open AI - Abhay Sir"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "content": "# Analysis\n- Summary \n- Similarities \n- Pain Points + Solutions\n",
+        "height": 360,
+        "width": 1100
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2260,
+        -180
+      ],
+      "typeVersion": 1,
+      "id": "07e8dc86-e596-46dd-8b70-d243e0443e23",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "# Create Report\n",
+        "height": 360,
+        "width": 300
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3380,
+        -180
+      ],
+      "typeVersion": 1,
+      "id": "011e1650-16d4-495f-83fa-381aea6cba0e",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "# Email Report\n",
+        "height": 360,
+        "width": 820,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3700,
+        -180
+      ],
+      "typeVersion": 1,
+      "id": "38112a01-f059-46ea-89c7-9ec174fc2a84",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "html": "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\">\n    <title>Consultant Research Report</title>\n    <style>\n      body {\n        font-family: Arial, sans-serif;\n        margin: 20px;\n        line-height: 1.6;\n        color: #333;\n      }\n      h1, h2, h3 {\n        color: #222;\n      }\n      .section {\n        margin-bottom: 40px;\n      }\n      .profile-details p {\n        margin: 5px 0;\n      }\n      table {\n        width: 100%;\n        border-collapse: collapse;\n        margin-top: 10px;\n      }\n      th, td {\n        border: 1px solid #ddd;\n        padding: 8px;\n        vertical-align: top;\n      }\n      th {\n        background-color: #f2f2f2;\n      }\n      .card {\n        border: 1px solid #ddd;\n        padding: 10px;\n        margin-bottom: 10px;\n        border-radius: 4px;\n      }\n      a {\n        color: #1a0dab;\n        text-decoration: none;\n      }\n      a:hover {\n        text-decoration: underline;\n      }\n      /* New styles for the header images container */\n      .header-images {\n        display: flex;\n        margin-bottom: 20px;\n      }\n      .header-images img {\n        width: 50%;\n        height: auto;\n        max-width: 300px;\n\n      }\n    </style>\n  </head>\n  <body>\n        <!-- Header Images -->\n    <div class=\"header-images\">\n      <img src=\"{{ $('Scrape Profiles + Posts - Relevance AI').last().json.linkedin_profile_details_data.profile_image_url }}\" alt=\"Profile Picture\">\n      <img src=\"{{ $('Scrape Profiles + Posts - Relevance AI').last().json.linkedin_profile_details_data.company_logo_url }}\" alt=\"Company Logo\">\n    </div>\n\n    <!-- Analysis & Key Facts -->\n    <div class=\"section\" id=\"analysis\">\n      <h1>Analysis & Key Facts</h1>\n      {{ $('Person + Company Profile1').item.json.output }}\n      {{ $('Similarities1').item.json.output }}\n      {{ $json.output }}\n    </div>\n\n    <!-- Detailed Research Report -->\n    <div class=\"section\" id=\"research-report\">\n      <h1>Research Report</h1>\n      \n      <!-- LinkedIn Profile Details -->\n      <div id=\"linkedin-profile\" class=\"profile-details\">\n        <h2>LinkedIn Profile Details</h2>\n        <p><strong>Name:</strong> {{ $node[\"Scrape Profiles + Posts - Relevance AI\"].json.linkedin_profile_details_data.full_name }}</p>\n        <p><strong>Headline:</strong> {{ $node[\"Scrape Profiles + Posts - Relevance AI\"].json.linkedin_profile_details_data.headline }}</p>\n        <p><strong>Location:</strong> {{ $node[\"Scrape Profiles + Posts - Relevance AI\"].json.linkedin_profile_details_data.location }}</p>\n        <p><strong>About:</strong> {{ $node[\"Scrape Profiles + Posts - Relevance AI\"].json.linkedin_profile_details_data.about }}</p>\n        <p><strong>City:</strong> {{ $node[\"Scrape Profiles + Posts - Relevance AI\"].json.linkedin_profile_details_data.city }}</p>\n        <p><strong>Country:</strong> {{ $node[\"Scrape Profiles + Posts - Relevance AI\"].json.linkedin_profile_details_data.country }}</p>\n        <p><strong>Job Title:</strong> {{ $node[\"Scrape Profiles + Posts - Relevance AI\"].json.linkedin_profile_details_data.job_title }}</p>\n        <p><strong>Company:</strong> {{ $node[\"Scrape Profiles + Posts - Relevance AI\"].json.linkedin_profile_details_data.company }}</p>\n        <p><strong>Company Description:</strong> {{ $node[\"Scrape Profiles + Posts - Relevance AI\"].json.linkedin_profile_details_data.company_description }}</p>\n        <p>\n          <strong>Company Website:</strong>\n          <a href=\"{{ $node[\"Scrape Profiles + Posts - Relevance AI\"].json.output.linkedin_profile_details_data.company_website }}\" target=\"_blank\">\n            {{ $node[\"Scrape Profiles + Posts - Relevance AI\"].json.linkedin_profile_details_data.company_website }}\n          </a>\n        </p>\n        <p><strong>Industry:</strong> {{ $node[\"Scrape Profiles + Posts - Relevance AI\"].json.linkedin_profile_details_data.company_industry }}</p>\n        <p>\n          <strong>LinkedIn URL:</strong>\n          <a href=\"{{ $node[\"Scrape Profiles + Posts - Relevance AI\"].json.output.linkedin_profile_details_data.linkedin_url }}\" target=\"_blank\">\n            {{ $node[\"Scrape Profiles + Posts - Relevance AI\"].json.linkedin_profile_details_data.linkedin_url }}\n          </a>\n        </p>\n      </div>\n      \n      <!-- Education -->\n      <div id=\"education\">\n        <h2>Education</h2>\n        <table>\n          <thead>\n            <tr>\n              <th>School</th>\n              <th>Degree</th>\n              <th>Field of Study</th>\n            </tr>\n          </thead>\n          <tbody>\n            {{ $node[\"Education\"].json.educationTable }}\n          </tbody>\n        </table>\n      </div>\n      \n      <!-- Experience -->\n      <div id=\"experience\">\n        <h2>Experience</h2>\n        <table>\n          <thead>\n            <tr>\n              <th>Company</th>\n              <th>Title</th>\n              <th>Date Range</th>\n              <th>Location</th>\n            </tr>\n          </thead>\n          <tbody>\n            {{ $node[\"Experiences\"].json.experiencesTable }}\n          </tbody>\n        </table>\n      </div>\n      \n      <!-- Recent LinkedIn Posts -->\n      <div id=\"linkedin-posts\">\n        <h2>Recent LinkedIn Posts</h2>\n        {{ $node[\"Posts\"].json.postsHTML }}\n      </div>\n      \n      <!-- Google Research Analysis -->\n      <div id=\"google-research\">\n        <h2>Google Research Analysis</h2>\n        <p>{{ $('Research Company - DeepSeek').item.json.choices[0].message.content }}</p>\n      </div>\n      \n      <!-- Trustpilot Reviews -->\n      <div id=\"trustpilot-reviews\">\n        <h2>Trustpilot Reviews</h2>\n        {{ $node[\"Reviews\"].json.reviewsHTML }}\n      </div>\n      \n      <!-- Citations -->\n      <div id=\"citations\">\n        <h2>Citations</h2>\n        {{ $node[\"Citations\"].json.citationsHTML }}\n      </div>\n      \n    </div>\n  </body>\n</html>\n"
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        3500,
+        -40
+      ],
+      "id": "c8081df4-89ec-41fd-a28c-75e01c246193",
+      "name": "Create HTML Report"
+    },
+    {
+      "parameters": {
+        "sendTo": "ved.krivy@gmail.com",
+        "subject": "={{ $('Scrape Profiles + Posts - Relevance AI').last().json.linkedin_profile_details_data.full_name }} Research Report",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3800,
+        -40
+      ],
+      "id": "91d0f17e-6d75-4016-bb64-bb5887271f6c",
+      "name": "Email Report",
+      "webhookId": "048324ca-98a3-4421-833b-cbdfcc45e4bc",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bTDSnVkJJ4ICq5kD",
+          "name": "Gmail account My Automation"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "53050079-f4f6-4e50-b778-d885a6125638",
+              "name": "success",
+              "value": "\"Research is now complete. Please check your email for the full report\"",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4060,
+        -40
+      ],
+      "id": "95dbceae-8a7a-44a2-8c51-c368bd8334c3",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.highLevel",
+      "typeVersion": 2,
+      "position": [
+        4280,
+        -60
+      ],
+      "id": "07d15c8a-1a26-44f7-bee0-60b2b0809a0d",
+      "name": "HighLevel",
+      "credentials": {
+        "highLevelOAuth2Api": {
+          "id": "lxrwBD4dtCzOzxzO",
+          "name": "HighLevel account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        300,
+        -40
+      ],
+      "id": "d79473f5-20dc-404d-acd3-f90df1999257",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.deepseek.com/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "deepSeekApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"deepseek-chat\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a researcher in a business development team. Your job is to find as much research as you can about the prospect company. You must ensure your research is for the correct company and is highly accurate. Your research must always include what the prospect company does. give in proper format make sure remove all the star like this **Website:**, so it can not show in output and looks clean and structured. add spaces and make proper format like this example:- City:\n\nCountry: Egypt\n\nJob Title: Head of HR for talent &performance managements\n\nCompany: Al Manar Group\nThis is just example so the output data looks like this formatted.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Find as much info as you can about {{ $('Scrape Profiles + Posts - Relevance AI').last().json.linkedin_profile_details_data.company }}\\nThis is their website URL: {{ $('Scrape Profiles + Posts - Relevance AI').last().json.linkedin_profile_details_data.company_website }}\"\n    }\n  ]\n}\n\n",
+        "options": {}
+      },
+      "id": "0aba101b-a086-4fce-a962-f14343e88bc5",
+      "name": "Research Company - DeepSeek",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1460,
+        -40
+      ],
+      "credentials": {
+        "deepSeekApi": {
+          "id": "c3Y5GWSWub3DvnOM",
+          "name": "DeepSeek - myautomation"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        2280,
+        180
+      ],
+      "id": "dd7ad908-e7c4-4949-a19e-d74153002289",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "c3Y5GWSWub3DvnOM",
+          "name": "DeepSeek - myautomation"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are part of the business development team at Krivy, an AI automation agency. Your task is to analyze both the **prospect’s personal profile** and their **company profile** before a consultation call.\n\nYou will receive:\n- The person’s structured LinkedIn profile data.\n- The company’s details (from Clearbit, Crunchbase, or scraped web content).\n\nYour goal is to provide a **clear, concise overview** of both, including relevant insights for the consultant.\n\n---\n\n### 👤 Person Profile — What to Extract: \n- Full name and current role.\n- Summary of their work history (highlighting senior roles or relevant industries).\n- Areas of expertise (marketing, tech, automation, leadership, etc.).\n- Notable skills, certifications, or achievements.\n- Education background.\n- Professional tone (startup-oriented, corporate, technical, etc.).\n\n---\n\n### 🏢 Company Profile — What to Extract:\n- Company name, location, and website.\n- Industry and product/service offering.\n- Target customers (B2B, B2C, SMBs, Enterprise).\n- Company size and stage (early, scaling, mature).\n- Technology stack used (especially CRM, marketing tools, automation tools).\n- Any known pain points or gaps we can solve (from reviews, tech used, hiring trends, etc.).\n- Recent news, funding, or major initiatives if available.\nhere is the link where to fetch those data:- {{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.about }}\n---\n\n### 🧠 Output Format:\nReturn your insights in HTML format like this:\n\n<h2>Prospect Overview</h2>\n<ul>\n  <li><strong>Name:</strong> John Doe</li>\n  <li><strong>Current Role:</strong> Head of Growth at XYZ Corp</li>\n  <li><strong>Expertise:</strong> Performance Marketing, Funnel Optimization</li>\n  <li><strong>Education:</strong> MBA, Columbia University</li>\n</ul>\n\n<h2>Company Overview</h2>\n<ul>\n  <li><strong>Company:</strong> XYZ Corp</li>\n  <li><strong>Industry:</strong> eCommerce SaaS</li>\n  <li><strong>Product:</strong> AI-powered personalization engine for online stores</li>\n  <li><strong>Target Audience:</strong> DTC eCommerce brands in North America</li>\n  <li><strong>Stack:</strong> Shopify, Klaviyo, Segment, HubSpot</li>\n  <li><strong>Opportunity:</strong> Potential for automation in onboarding and retention journeys</li>\n</ul>\n\nIf any detail is missing from the input, skip that bullet point.\n\n---\n\nLet me know if you want me to wrap this into a **prebuilt n8n Function node** or generate dynamic data insertion for you!",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        2340,
+        -40
+      ],
+      "id": "91b9e45f-1f19-4232-8d0a-714ce90781a0",
+      "name": "Person + Company Profile1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are part of the business development team at Krivy, an AI automation agency. \n\nWhen new leads book a consultation with Krivy, your team researches the leads and provides the research + extracted insights to the consultants so they can review it before the call.\n\nAs an ice breaker for each consult, Abhay, Krivy’s AI consultant, likes to mention a similarity between himself and the lead. This makes the lead feel more at ease, helping the conversation feel like it's between friends rather than strangers.\n\nTo find these similarities, you must compare **Abhay’s LinkedIn profile** to the **lead’s LinkedIn profile**. Look for similarities in:\n\n- Education  \n- Work experience  \n- Locations  \n- Tools, tech stacks, or automation interests  \n- Industries worked in  \n- Certifications  \n- Interests and hobbies  \n\nIf there are no similarities, simply write **\"No Similarities Found\"** in the **details section**.\n\nHere is url for extract:- {{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.about }}\n---\n\nYour output **must be in this HTML format**:\n\n## Similarities  \n<ul>  \n  <li>One similarity here</li>  \n  <li>Another similarity here</li>  \n</ul>\n\n---\n// Safely fetch the lead's LinkedIn data\nconst leadData = $node[\"Scrape Profiles + Posts - Relevance AI\"].last().json.linkedin_profile_details_data;\n\n// Abhay's hardcoded LinkedIn info\nconst abhayProfile = {\n  name: \"Abhay Purohit\",\n  current_position: \"Founder at Krivy, AI & Automation Consultant\",\n  education: [\n    {\n      school: \"Gujarat Technological University\",\n      degree: \"Bachelor of Engineering (BE)\",\n      field_of_study: \"Information Technology\"\n    }\n  ],\n  experience: [\n    {\n      company: \"Krivy Co.\",\n      title: \"Founder & AI Automation Consultant\",\n      location: \"Ahmedabad, Gujarat, India\"\n    },\n    {\n      company: \"Freelance\",\n      title: \"Marketing Consultant\",\n      location: \"Remote\"\n    }\n  ],\n  location: \"Ahmedabad, Gujarat, India\",\n  interests: [\n    \"Automation\",\n    \"AI Agents\",\n    \"eCommerce\",\n    \"Marketing Technology\",\n    \"Workflow Automation\",\n    \"Storytelling\",\n    \"Business Strategy\"\n  ]\n};\n\n// If no lead data found, exit early\nif (!leadData) {\n  return [{\n    json: {\n      similaritiesHtml: `\n        <h2>Similarities</h2>\n        <ul>\n          <li>No Similarities Found</li>\n        </ul>\n      `\n    }\n  }];\n}\n\n// Start comparing\nlet similarities = [];\n\n// Location\nif (leadData.location && leadData.location.includes(abhayProfile.location.split(\",\")[0])) {\n  similarities.push(`Both are located in or near <strong>${abhayProfile.location}</strong>.`);\n}\n\n// Education\nif (Array.isArray(leadData.educations)) {\n  leadData.educations.forEach(edu => {\n    if (edu.school && abhayProfile.education.some(e => edu.school.includes(e.school))) {\n      similarities.push(`Both studied at <strong>${edu.school}</strong>.`);\n    }\n    if (edu.field_of_study && abhayProfile.education.some(e => edu.field_of_study && edu.field_of_study.toLowerCase().includes(e.field_of_study.toLowerCase()))) {\n      similarities.push(`Both have a background in <strong>${edu.field_of_study}</strong>.`);\n    }\n  });\n}\n\n// Work Experience\nif (Array.isArray(leadData.experiences)) {\n  leadData.experiences.forEach(exp => {\n    if (exp.company && abhayProfile.experience.some(e => exp.company.includes(e.company))) {\n      similarities.push(`Both have worked at <strong>${exp.company}</strong>.`);\n    }\n    if (exp.location && exp.location.includes(\"Remote\")) {\n      similarities.push(`Both have worked remotely.`);\n    }\n  });\n}\n\n// Interests\nif (Array.isArray(leadData.interests)) {\n  abhayProfile.interests.forEach(interest => {\n    if (leadData.interests.includes(interest)) {\n      similarities.push(`Both share an interest in <strong>${interest}</strong>.`);\n    }\n  });\n}\n\n// Final Output\nconst htmlList = similarities.length > 0\n  ? `<h2>Similarities</h2>\\n<ul>\\n${similarities.map(sim => `<li>${sim}</li>`).join('\\n')}\\n</ul>`\n  : `<h2>Similarities</h2>\\n<ul>\\n<li>No Similarities Found</li>\\n</ul>`;\n\nreturn [{\n  json: {\n    similaritiesHtml: htmlList\n  }\n}];\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        2680,
+        -40
+      ],
+      "id": "ca3a4ecc-c621-4048-9d28-3cb6d35fa828",
+      "name": "Similarities1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        2620,
+        220
+      ],
+      "id": "fa55abb3-3090-4208-8cea-4ae8d5eafd0c",
+      "name": "DeepSeek Chat Model1",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "c3Y5GWSWub3DvnOM",
+          "name": "DeepSeek - myautomation"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        2960,
+        220
+      ],
+      "id": "17d275ca-8bf3-47bb-bab0-0602caa0e66c",
+      "name": "DeepSeek Chat Model2",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "c3Y5GWSWub3DvnOM",
+          "name": "DeepSeek - myautomation"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are part of the business development team at Kamexa. Kamexa is an AI Automation agency that provides the following services: \n\n- AI Consulting: Kamexa provides consultations to businesses looking to implement AI. \n- Process Automation: Kamexa automates processes that are repetitive, time consuming, high volume or error prone. These repetitive proccesses are automated with traditional rule based automations. \n- AI SaaS Development: For businesses that can automate their entire service, Kamexa creates a SaaS platform so that they can provide their services over the cloud in a one to many fashion. \n- AI Agent Development: Kamexa develops custom AI agents that can handle less repetitive tasks autonomously. Considering the current capabilities of AI agents, the tasks that they can complete have to be simple in scope. \n\nKamexa's AI consultants are the first point of contact for a new lead. So when a new lead is interested in AI Automation solutions, they book a free call with Kamexa's AI consultants. The consultants are then responsible for exploring the highest ROI opportunities for automation.\n\nOnce a call is booked, your team does in depth research on the lead so that the consultants can read through it in preparation for the consultation. \n\nAs part of the business development team you are provided with the following research: \n\n- LinkedIn Profile: This is the result of scraping the leads LinkedIn profile. This will give you the leads bio, experiences, education and company description.\n- LinkedIn Posts: This gives you the leads LinkedIn posts over the past 30 days. \n- Company Google Search: This gives you the research found from searching the leads company on Google and their website. \n- Reviews: This gives you the most recent bad reviews the leads company received on TrustPilot. \n\nYour job is to analyse the research and extract following information: \n\n- Pain Points: By looking through the companies negative reviews and also considering their line of business and the leads position in the company, you must identify the biggest pain points the leads company could be facing. \n- Solutions to Pain Points: In this section you must come up with solutions Kamexa can offer to solve each of the pain points completely. \n- Highest ROI Automation Opportunities: Considering the info you have about the lead and his company, you must come up with the 5 highest ROI automation opportunities that Kamexa can offer them. These automations have to be realisitic, yet extremely high ROI. Sort them in order of best opportunity at the top of the list.  \n\nThe insights you extract must be in HTML format as they will be going in the middle of a HTML document. \n\nPlease use the following output format: \n\nOpportunities (Heading 1)\n\nPain Points and Solutions: (Heading 2)\n[Table with 3 columns: \n1. Pain Point: Explains the pain point theyre facing. \n2. Evidence: Explains why we think this is the case. \n3. Solution: Explains the solution to the pain point by Kamexa.\nEach row is a new pain point.]\n\nAutomation Opportunities: (Heading 2)\n[5 Highest ROI automation opportunities for the leads company sorted with the best solution at the top. This must be in dotpoint format:\n- Opportunity#1 Name: Details\n- Opportunity#2 Name: Details\n...\n\n- Don't wrap the output in ```html``` since the output will go into the middle of another HTML document.\n\nSomeone just booked a call. Here's the research your team found. Create the output as per the above requirements: \n\n\nLinkedIn Profile Scraped Summary in HTML format: \n{{ $('Person + Company Profile1').item.json.output }}\n\nWeb Research Results for Leads Company: \n{{ $('Research Company - DeepSeek').item.json.choices[0].message.content }}\n\nRecent Bad Reviews on TrustPilot for Leads Company in HTML format: \n{{ $('Reviews').last().json.reviewsHTML }}\n(if there is no reviews then just create the pain points by considering the leads company and job title)\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        3040,
+        -40
+      ],
+      "id": "f505ffbb-afe7-41af-82ae-6fcaff73cfaf",
+      "name": "Pain Points + Solutions1"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1p3cXRuWti6_pKe8zRALY3Kr1Hp0wOnofDAqiSGfnqqM",
+          "mode": "list",
+          "cachedResultName": "LeadGen Company Data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1p3cXRuWti6_pKe8zRALY3Kr1Hp0wOnofDAqiSGfnqqM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1p3cXRuWti6_pKe8zRALY3Kr1Hp0wOnofDAqiSGfnqqM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "linkedinURL": "={{ $('When Executed by Another Workflow').item.json.query }}",
+            "Research Report": "={{ $('Create HTML Report').item.json.html }}"
+          },
+          "matchingColumns": [
+            "linkedinURL"
+          ],
+          "schema": [
+            {
+              "id": "fullName",
+              "displayName": "fullName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "emailAddress",
+              "displayName": "emailAddress",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "linkedinURL",
+              "displayName": "linkedinURL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "seniority",
+              "displayName": "seniority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "jobTitle",
+              "displayName": "jobTitle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "companyName",
+              "displayName": "companyName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "location",
+              "displayName": "location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "country",
+              "displayName": "country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Number",
+              "displayName": "Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "websiteURL",
+              "displayName": "websiteURL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "businessIndustry",
+              "displayName": "businessIndustry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Research Report",
+              "displayName": "Research Report",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        4060,
+        -220
+      ],
+      "id": "b467a676-9744-4561-af1b-bb45bcddc476",
+      "name": "Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "A9e8kzx0DViUnFCS",
+          "name": "Google Sheets - my automation"
+        }
+      },
+      "disabled": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Scrape Profiles + Posts - Relevance AI": {
+      "main": [
+        [
+          {
+            "node": "Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Company - Perplexity": {
+      "main": [
+        []
+      ]
+    },
+    "TrustPilot Reviews (1-3 Stars)": {
+      "main": [
+        [
+          {
+            "node": "Reviews",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Experiences": {
+      "main": [
+        [
+          {
+            "node": "Education",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Education": {
+      "main": [
+        [
+          {
+            "node": "Research Company - DeepSeek",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reviews": {
+      "main": [
+        [
+          {
+            "node": "Person + Company Profile1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Posts": {
+      "main": [
+        [
+          {
+            "node": "Experiences",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Citations": {
+      "main": [
+        [
+          {
+            "node": "TrustPilot Reviews (1-3 Stars)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Person + Company Profile": {
+      "main": [
+        [
+          {
+            "node": "Similarities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Similarities": {
+      "main": [
+        [
+          {
+            "node": "Pain Points + Solutions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pain Points + Solutions": {
+      "main": [
+        []
+      ]
+    },
+    "Create HTML Report": {
+      "main": [
+        [
+          {
+            "node": "Email Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Report": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        []
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Scrape Profiles + Posts - Relevance AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Company - DeepSeek": {
+      "main": [
+        [
+          {
+            "node": "Citations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Person + Company Profile1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Person + Company Profile1": {
+      "main": [
+        [
+          {
+            "node": "Similarities1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Similarities1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Similarities1": {
+      "main": [
+        [
+          {
+            "node": "Pain Points + Solutions1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Pain Points + Solutions1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pain Points + Solutions1": {
+      "main": [
+        [
+          {
+            "node": "Create HTML Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a9380483-8455-4f90-b6f3-81c6a80a9597",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8d1b6c29d9cc0dbb12453af674cdc408ce360217bf18b234abffaba62637fb22"
+  },
+  "id": "0pW7YJIJl5oO9PBa",
+  "tags": []
+}

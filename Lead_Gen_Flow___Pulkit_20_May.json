@@ -1,0 +1,454 @@
+{
+  "name": "Lead Gen Flow - Pulkit 20 May",
+  "nodes": [
+    {
+      "parameters": {
+        "name": "leadScraping",
+        "description": "=Call this tool to scrape leads once you have enough details about the search query. \n\nYour input must be in json like this: \n\n[\n  {\n    \"location\": [\n      \"LOCATION1+HERE\",\n      \"LOCATION2+HERE\",\n      ...\n    ],\n    \"business\": [\n      \"BUSINESS1+HERE\",\n      \"BUSINESS2+HERE\",\n      ...\n    ],\n    \"job_title\": [\n      \"TITLE1+HERE\",\n      \"TITLE2+HERE\",\n      ...\n    ]\n  }\n]",
+        "workflowId": {
+          "__rl": true,
+          "value": "A0J1A2Pm6uX9JVsz",
+          "mode": "list",
+          "cachedResultName": "Lead Scraping Flow - Pulkit 20 May"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        680,
+        460
+      ],
+      "id": "6b7693a0-420d-47c0-a3f4-c39198fa487b",
+      "name": "leadScraping",
+      "notesInFlow": false,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "name": "leadResearch",
+        "description": "=Call this tool for research leads. the tool should be their LinkedIn URL in the following format:\n\n\n{{ $('Text').item.json.text }}",
+        "workflowId": {
+          "__rl": true,
+          "value": "0pW7YJIJl5oO9PBa",
+          "mode": "list",
+          "cachedResultName": "Lead Research Flow - Pulkit 20 May"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        820,
+        400
+      ],
+      "id": "bd4d16f2-149e-453c-8653-09678a1f81c4",
+      "name": "leadResearch"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "options": {
+          "systemMessage": "=# Overview \nYou are a lead generation agent, responsible for scraping and researching leads. \n\n# Tools \n### leadScraping: \nUse this tool to scrape leads into a Google Sheet. Only call this tool once you have enough information to complete the desired JSON search query. \n\n### leadResearch: \nUse this tool to research a lead by their linkedIn URL. Only call this tool when you have linkedin URL for the research query.\n\n# Rules \n- Ask clarifying questions if you're unsure about something. \n- Ask questions to gather enough information to satisfy the query for each of the tools. \n- You should introduce yourself as \"Lead Generation Joe\" and ask the user what leads they want to scrape today. \n- Always replace spaces with '+' in your search queries. For example, instead of \"los angeles united states\", your query should be \"los+angeles+united+states\". \n- You always need a linkedIn URL to research a lead. \n- You can only research one person at a time. \n- Make sure you always call the tools with correct JSON formatting, but don't wrap the query in ```json```.\n\n# Example \n- Input: \"Hi\" \n- Output: \"Hi, I'm Lead Generation Bot, which leads can I help you scrape today? Just tell me the locations, Business and job titles and let me handle the rest! \" \n- Input: \"Let's do \\n Locations: \\n - Chicago United States \\n - Sydney Australia \\n\\n Business: \\n - Financial Planners \\n] \n- Output: \"Awesome. I think you forgot the job titles. Which job titles should I search for?\" \n- Input: \"Only CEOs please\" \n- Call leadScrape tool with query: \n\n[\n  {\n    \"location\": [\n      \"chicago+united+states\",\n      \"sydney+australia\"\n    ],\n    \"business\": [\n      \"financial+planner\"\n    ],\n    \"job_title\": [\n      \"ceo\"\n    ]\n  }\n] \n- Input from tool: \"25 new contacts have been added to the Google Sheet!\" \n- Output: \"Done! I've added 25 new contacts to the Google Sheet. Let me know if you need anything else!\" \n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        520,
+        100
+      ],
+      "id": "0bbdaa26-63cc-44dd-bcba-409fe1941408",
+      "name": "Lead Agent",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        560,
+        400
+      ],
+      "id": "268c36a7-1fe3-4137-8f24-dc07482a93a1",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.voice.file_id }}"
+      },
+      "id": "67fbf343-2cb2-4ef6-ac39-2ab88a7228cb",
+      "name": "Download File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "d48af721-aeb5-47e7-aeab-b41f74e239e6",
+      "credentials": {
+        "telegramApi": {
+          "id": "NCRCpKaCb9C6bld9",
+          "name": "Leadgen-Ved"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "id": "4ec674d7-84ce-426f-9cc1-35a8cf282da4",
+      "name": "Transcribe",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.6,
+      "position": [
+        220,
+        0
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "00oHXEhh69yWCZ7s",
+          "name": "Open AI - Abhay Sir"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fe7ecc99-e1e8-4a5e-bdd6-6fce9757b234",
+              "name": "text",
+              "value": "={{ $json.message.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a8508cd3-4441-4c16-ba7b-3dd6b91f9789",
+      "name": "Text",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.voice.file_id }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "id": "7c03d95c-eb58-438a-a994-04ae9d9304e8"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Voice"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8c844924-b2ed-48b0-935c-c66a8fd0c778",
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Text"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0caa1f36-470e-44dd-82f0-6418336ad307",
+      "name": "Voice or Text",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -220,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "updates": "={{ [\"message\"] }}",
+        "additionalFields": {}
+      },
+      "id": "40e93bc1-486e-4d14-a821-7711578666c3",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -440,
+        100
+      ],
+      "webhookId": "2a2d3333-b6a5-4f58-b700-556f2083dc76",
+      "credentials": {
+        "telegramApi": {
+          "id": "NCRCpKaCb9C6bld9",
+          "name": "Leadgen-Ved"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=xyz",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "14ed22c1-1176-4adb-a444-3f61fda4f931",
+      "name": "Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1000,
+        0
+      ],
+      "webhookId": "c08d63b1-68e6-4357-a3a9-ae4de2e9a244",
+      "credentials": {
+        "telegramApi": {
+          "id": "NCRCpKaCb9C6bld9",
+          "name": "Leadgen-Ved"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.error }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "f847c809-785d-43d9-ae00-2c8b3e043573",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1000,
+        200
+      ],
+      "webhookId": "50336c3f-a688-4a26-bdb7-e51a3a539b77",
+      "credentials": {
+        "telegramApi": {
+          "id": "NCRCpKaCb9C6bld9",
+          "name": "Leadgen-Ved"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        440,
+        340
+      ],
+      "id": "c385a285-c04f-4dde-8d23-d157339ee392",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "PYgWQq9n31MIbyvb",
+          "name": "DeepSeek - myautomation"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "leadScraping": {
+      "ai_tool": [
+        [
+          {
+            "node": "Lead Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "leadResearch": {
+      "ai_tool": [
+        [
+          {
+            "node": "Lead Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Lead Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "Transcribe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice or Text": {
+      "main": [
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Voice or Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe": {
+      "main": [
+        [
+          {
+            "node": "Lead Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text": {
+      "main": [
+        [
+          {
+            "node": "Lead Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Agent": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Lead Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d1c0b8ee-a349-4150-ae66-2f92b5188c50",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8d1b6c29d9cc0dbb12453af674cdc408ce360217bf18b234abffaba62637fb22"
+  },
+  "id": "9RhgEcMSHCbDBPeh",
+  "tags": []
+}
